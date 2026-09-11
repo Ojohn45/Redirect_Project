@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head><title>Redirect</title></head>
+<body>
+    <h1>Redirect</h1>
+    <p>Your gate way to great learning:</p>
+    <ul>
+        {{range .}}
+            <li><a href="/language/{{.Slug}}">{{.Name}}</a></li>
+        {{end}}
+    </ul>
+</body>
+</html>

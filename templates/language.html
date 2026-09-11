@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head><title>{{.Name}} Resources - Redirect</title></head>
+<body>
+    <h1>Learn {{.Name}}</h1>
+    <a href="/">&larr; Back to all languages</a>
+    <ul>
+        {{range .Resources}}
+            <li>
+                <a href="/go/{{$.Slug}}/{{.ID}}" target="_blank">{{.Name}}</a>
+                — {{.Description}}
+            </li>
+        {{end}}
+    </ul>
+</body>
+</html>
