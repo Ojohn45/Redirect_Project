@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html>
-<head><title>Redirect</title></head>
+<head>
+    <title>Redirect</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
 <body>
     <h1>Redirect</h1>
     <p>Your gate way to great learning:</p>
     <ul>
         {{range .}}
-            <li><a href="/language/{{.Slug}}">{{.Name}}</a></li>
+        <li><a href="/language/{{.Slug}}">{{.Name}}</a></li>
         {{end}}
     </ul>
 </body>

@@ -55,7 +55,13 @@ func redirectHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	initDB()
+	defer db.Close()
+
 	mux := http.NewServeMux()
+	fileServer := http.FileServer(http.Dir("static"))
+	mux.Handle("GET /static/", http.StripPrefix("/static/", fileServer))
+
 	mux.HandleFunc("GET /", homeHandler)
 	mux.HandleFunc("GET /language/{slug}", languageHandler)
 	mux.HandleFunc("GET /go/{slug}/{resourceID}", redirectHandler)
