@@ -63,6 +63,9 @@ func main() {
 	mux.Handle("GET /static/", http.StripPrefix("/static/", fileServer))
 
 	mux.HandleFunc("GET /", homeHandler)
+	mux.HandleFunc("GET /signup", signupPageHandler)
+	mux.HandleFunc("POST /signup", signupHandler)
+
 	mux.HandleFunc("GET /language/{slug}", languageHandler)
 	mux.HandleFunc("GET /go/{slug}/{resourceID}", redirectHandler)
 

@@ -3,8 +3,6 @@ package main
 import (
 	"database/sql"
 	"log"
-	"unicode"
-
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -43,20 +41,4 @@ func initDB() {
 	}
 
 	log.Println("Database initialized successfully")
-}
-
-func isValidPassword(password string) bool {
-	hasLetter := false
-	hasNumber := false
-
-	for _, char := range password {
-		switch {
-		case unicode.IsLetter(char):
-			hasLetter = true
-		case unicode.IsDigit(char):
-			hasNumber = true
-		}
-	}
-
-	return hasLetter && hasNumber
 }
