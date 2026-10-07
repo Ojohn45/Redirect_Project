@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -54,6 +53,14 @@ func redirectHandler(w http.ResponseWriter, r *http.Request) {
 	http.NotFound(w, r)
 }
 
+func landingPageHandler(w http.ResponseWriter, r *http.Request) {
+	templates.ExecuteTemplate(w, "landing.html", nil)
+}
+
+func loginPageHandler(w http.ResponseWriter, r *http.Request) {
+	templates.ExecuteTemplate(w, "login.html", nil)
+}
+
 func main() {
 	initDB()
 	defer db.Close()
@@ -62,13 +69,11 @@ func main() {
 	fileServer := http.FileServer(http.Dir("static"))
 	mux.Handle("GET /static/", http.StripPrefix("/static/", fileServer))
 
-	mux.HandleFunc("GET /", homeHandler)
-	mux.HandleFunc("GET /signup", signupPageHandler)
-	mux.HandleFunc("POST /signup", signupHandler)
-
+	mux.HandleFunc("GET /", landingPageHandler)
+	mux.HandleFunc("GET /languages", homeHandler) // your existing language list — same handler as before, just a new path
 	mux.HandleFunc("GET /language/{slug}", languageHandler)
 	mux.HandleFunc("GET /go/{slug}/{resourceID}", redirectHandler)
-
-	fmt.Println("Server starting on http://localhost:8080")
-	http.ListenAndServe(":8080", mux)
+	mux.HandleFunc("GET /signup", signupPageHandler)
+	mux.HandleFunc("POST /signup", signupHandler)
+	mux.HandleFunc("GET /login", loginPageHandler)
 }

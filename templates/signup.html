@@ -4,20 +4,35 @@
     <title>Sign Up - Redirect</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
-    <h1>Create an Account</h1>
-    <form method="POST" action="/signup">
-        <label>Full Name</label>
-        <input type="text" name="full_name" required>
+<body class="auth-body">
+    <div class="auth-wrapper reverse">
+        <div class="auth-form-side">
+            <div class="auth-box">
+                <h1>Create Your Account</h1>
+                <p class="auth-subtext">Join Redirect and start tracking your learning.</p>
 
-        <label>Username</label>
-        <input type="text" name="username" required>
+                <form method="POST" action="/signup">
+                    <label>Full Name</label>
+                    <input type="text" name="full_name" required>
 
-        <label>Password</label>
-        <input type="password" name="password" required>
+                    <label>Username</label>
+                    <input type="text" name="username" required>
 
-        <button type="submit">Sign Up</button>
-    </form>
-    <p>Already have an account? <a href="/login">Log in</a></p>
+                    <label>Password</label>
+                    <input type="password" name="password" required>
+                    <p class="field-hint">Must contain both letters and numbers</p>
+
+                    <button type="submit" class="btn-filled full-width">Sign Up</button>
+                </form>
+
+                <p class="auth-switch">
+                    Already have an account? <a href="/login">Log in here</a>
+                </p>
+            </div>
+        </div>
+        <div class="auth-image">
+            <img src="/static/images/auth-side.jpg" alt="Redirect">
+        </div>
+    </div>
 </body>
 </html>
