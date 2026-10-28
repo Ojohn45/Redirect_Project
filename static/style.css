@@ -1,3 +1,4 @@
+/* ================= BASE ================= */
 body {
     font-family: 'Segoe UI', sans-serif;
     background-color: #0a1929;
@@ -32,4 +33,305 @@ li {
     padding: 12px 16px;
     border-radius: 8px;
     border: 1px solid #1e3a5c;
+}
+
+/* ================= SHARED ================= */
+.icon {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    flex-shrink: 0;
+}
+
+.btn-filled {
+    display: inline-block;
+    padding: 10px 20px;
+    border-radius: 6px;
+    background-color: #4a9eff;
+    color: #0a1929;
+    border: 1px solid #4a9eff;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.btn-filled:hover {
+    background-color: #6cb2ff;
+    text-decoration: none;
+}
+
+.full-width {
+    width: 100%;
+    text-align: center;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+/* Pill buttons */
+.pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 22px;
+    border-radius: 999px;
+    background-color: #153250;
+    border: 1px solid #2a4d78;
+    color: #6cb2ff;
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.2s, border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+.pill-soft {
+    background-color: #0f2236;
+    border-color: #1e3a5c;
+}
+
+.pill:hover {
+    background-color: #1b4268;
+    border-color: #4a9eff;
+    color: #8fc4ff;
+    text-decoration: none;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+}
+
+.pill:active {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+.caret {
+    font-size: 0.8rem;
+}
+
+/* Use this on any <img> you want at that bigger picture size */
+.feature-img {
+    width: 205px;
+    height: 205px;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 1px solid #1e3a5c;
+}
+
+/* ================= LANDING PAGE ================= */
+.landing {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+}
+
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 48px;
+}
+
+.brand {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #4a9eff;
+}
+
+.dropdown {
+    position: relative;
+}
+
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    padding-top: 10px;
+    width: 280px;
+    z-index: 50;
+}
+
+.dropdown:hover .dropdown-menu,
+.dropdown:focus-within .dropdown-menu {
+    display: block;
+}
+
+.menu-panel {
+    background-color: #0f2236;
+    border: 1px solid #1e3a5c;
+    border-radius: 12px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+    overflow: hidden;
+}
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    color: #d6e4f0;
+    text-decoration: none;
+    border-bottom: 1px solid #1e3a5c;
+}
+
+.menu-item:last-child {
+    border-bottom: none;
+}
+
+.menu-item:hover {
+    background-color: #12283f;
+    text-decoration: none;
+}
+
+.menu-item .icon {
+    color: #6cb2ff;
+}
+
+.menu-item strong {
+    display: block;
+    font-size: 0.95rem;
+    color: #e6edf3;
+}
+
+.menu-item small {
+    display: block;
+    margin-top: 2px;
+    font-size: 0.78rem;
+    color: #6b8cad;
+}
+
+.hero {
+    max-width: 700px;
+    margin: 60px auto;
+    padding: 0 20px;
+    text-align: center;
+}
+
+.hero h1 {
+    font-size: 3rem;
+    margin-bottom: 0;
+}
+
+.tagline {
+    color: #8fc4ff;
+    font-size: 1.2rem;
+    margin-top: 4px;
+}
+
+.hero-text {
+    color: #d6e4f0;
+    line-height: 1.6;
+    text-align: left;
+    margin: 30px 0;
+}
+
+.hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    justify-content: center;
+    margin-top: 30px;
+}
+
+/* ================= LOGIN / SIGNUP PAGES ================= */
+.auth-body {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+}
+
+.auth-wrapper {
+    display: flex;
+    min-height: 100vh;
+}
+
+.auth-image {
+    flex: 1;
+    overflow: hidden;
+}
+
+.auth-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.auth-form-side {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.auth-box {
+    width: 100%;
+    max-width: 380px;
+}
+
+.auth-box h1 {
+    margin-bottom: 4px;
+}
+
+.auth-subtext {
+    color: #8fc4ff;
+    margin-bottom: 24px;
+}
+
+.auth-box form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.auth-box label {
+    font-size: 0.9rem;
+    color: #d6e4f0;
+    margin-top: 10px;
+}
+
+.auth-box input {
+    background-color: #12283f;
+    border: 1px solid #1e3a5c;
+    border-radius: 6px;
+    padding: 10px 12px;
+    color: #e6edf3;
+    font-size: 1rem;
+}
+
+.auth-box input:focus {
+    outline: none;
+    border-color: #4a9eff;
+}
+
+.field-hint {
+    font-size: 0.8rem;
+    color: #6b8cad;
+    margin-top: -4px;
+}
+
+.auth-box button {
+    margin-top: 20px;
+    padding: 12px;
+}
+
+.auth-switch {
+    margin-top: 20px;
+    text-align: center;
+    color: #8fc4ff;
+}
+
+@media (max-width: 700px) {
+    .auth-wrapper {
+        flex-direction: column;
+    }
+    .auth-image {
+        min-height: 200px;
+    }
 }
