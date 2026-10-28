@@ -66,14 +66,18 @@ func main() {
 	defer db.Close()
 
 	mux := http.NewServeMux()
-	fileServer := http.FileServer(http.Dir("static"))
-	mux.Handle("GET /static/", http.StripPrefix("/static/", fileServer))
 
 	mux.HandleFunc("GET /", landingPageHandler)
-	mux.HandleFunc("GET /languages", homeHandler) // your existing language list — same handler as before, just a new path
+	mux.HandleFunc("GET /languages", homeHandler)
 	mux.HandleFunc("GET /language/{slug}", languageHandler)
 	mux.HandleFunc("GET /go/{slug}/{resourceID}", redirectHandler)
 	mux.HandleFunc("GET /signup", signupPageHandler)
 	mux.HandleFunc("POST /signup", signupHandler)
 	mux.HandleFunc("GET /login", loginPageHandler)
+
+	fileServer := http.FileServer(http.Dir("static"))
+	mux.Handle("GET /static/", http.StripPrefix("/static/", fileServer))
+
+	log.Println("Server starting on http://localhost:8080")
+	log.Fatal(http.ListenAndServe(":8080", mux))
 }

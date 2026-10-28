@@ -4,12 +4,30 @@
     <title>Redirect — Your Gateway to Great Learning</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
+<body class="landing">
     <nav class="navbar">
         <div class="brand">Redirect</div>
-        <div class="nav-links">
-            <a href="/login" class="btn-outline">Log In</a>
-            <a href="/signup" class="btn-filled">Sign Up</a>
+
+        <div class="dropdown">
+            <button class="pill" type="button">
+                Log In / Sign Up <span class="caret">▾</span>
+            </button>
+            <div class="dropdown-menu">
+                <div class="menu-panel">
+                    <a href="/login" class="menu-item">
+                        <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+                        <span><strong>Log In</strong><small>Access your account</small></span>
+                    </a>
+                    <a href="/signup" class="menu-item">
+                        <svg class="icon" viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6"/><path d="M19 8v6M16 11h6"/></svg>
+                        <span><strong>Sign Up</strong><small>Create a free account</small></span>
+                    </a>
+                    <a href="/languages" class="menu-item">
+                        <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                        <span><strong>Browse Languages</strong><small>Explore learning resources</small></span>
+                    </a>
+                </div>
+            </div>
         </div>
     </nav>
 
@@ -27,8 +45,14 @@
             track of every resource you've visited, so you never lose your place.
         </p>
         <div class="hero-actions">
-            <a href="/languages" class="btn-filled">Browse Languages</a>
-            <a href="/signup" class="btn-outline">Create Free Account</a>
+            <a href="/languages" class="pill">
+                <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                Browse Languages
+            </a>
+            <a href="/signup" class="pill pill-soft">
+                <svg class="icon" viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6"/><path d="M19 8v6M16 11h6"/></svg>
+                Create Free Account
+            </a>
         </div>
     </section>
 </body>
