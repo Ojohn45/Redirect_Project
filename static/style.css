@@ -474,3 +474,181 @@ li {
         height: 220px;
     }
 }
+
+/* ================= NEW: TOP BAR (logged-in + languages pages) ================= */
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.topbar .brand {
+    text-decoration: none;
+}
+
+.topbar-links {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.topbar-links form {
+    margin: 0;
+}
+
+/* ================= NEW: CLICKABLE CARDS (whole box is the link) ================= */
+.card-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.card {
+    display: block;                 /* makes the WHOLE box clickable */
+    padding: 14px 18px;
+    background-color: #12283f;
+    border: 1px solid #1e3a5c;
+    border-radius: 8px;
+    color: #6cb2ff;
+    text-decoration: none;
+    transition: transform 0.15s, border-color 0.15s, background-color 0.15s;
+}
+
+.card:hover {
+    background-color: #153250;
+    border-color: #4a9eff;
+    transform: translateY(-2px);
+    text-decoration: none;
+}
+
+.site-card strong {
+    display: block;
+    color: #e6edf3;
+}
+
+.site-card span {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.85rem;
+    color: #6b8cad;
+}
+
+/* ================= NEW: DASHBOARD ================= */
+.dashboard {
+    text-align: center;
+}
+
+.browse-btn {
+    margin-top: 24px;
+    padding: 16px 48px;
+    font-size: 1.2rem;
+}
+
+.section-title {
+    margin-top: 48px;
+    text-align: left;
+    color: #8fc4ff;
+    font-size: 1.1rem;
+}
+
+.dashboard .card-list {
+    text-align: left;
+}
+
+/* ================= NEW: SIGN-UP POPUP ================= */
+.popup-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 12, 22, 0.75);
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 20px;
+}
+
+.popup-overlay.show {
+    display: flex;
+}
+
+.popup-wrap {
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+
+.popup-box {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 32px 28px;
+    background: linear-gradient(180deg, #17324f, #0f2236);
+    border: 1px solid #4a9eff;
+    border-radius: 16px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    color: #d6e4f0;
+    text-decoration: none;
+    animation: popIn 0.25s ease-out both;
+}
+
+.popup-box:hover {
+    border-color: #8fc4ff;
+    text-decoration: none;
+}
+
+.popup-box strong {
+    font-size: 1.25rem;
+    color: #e6edf3;
+}
+
+.popup-box em {
+    font-style: normal;
+    font-weight: 600;
+    color: #6cb2ff;
+}
+
+.popup-extra {
+    margin-top: 14px;
+    font-size: 0.9rem;
+    color: #8fc4ff;
+}
+
+.link-button {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: #6cb2ff;
+    cursor: pointer;
+}
+
+.link-button:hover {
+    text-decoration: underline;
+}
+
+@keyframes popIn {
+    0% { opacity: 0; transform: scale(0.9); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+/* ================= NEW: FORM MESSAGES ================= */
+.form-error, .form-success {
+    margin: 0 0 8px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.form-error {
+    background-color: #3a1620;
+    border: 1px solid #8b2f45;
+    color: #ffb3c1;
+}
+
+.form-success {
+    background-color: #12341f;
+    border: 1px solid #2f8b52;
+    color: #a9f0c3;
+}

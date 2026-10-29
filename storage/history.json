@@ -1,0 +1,23 @@
+[
+  {
+    "user_id": 1,
+    "language_slug": "cpp",
+    "resource_id": "cpp-cplusplus-tutorial",
+    "resource_name": "cplusplus.com Tutorial",
+    "clicked_at": "2026-10-29T14:31:06.723214985+01:00"
+  },
+  {
+    "user_id": 1,
+    "language_slug": "cpp",
+    "resource_id": "cpp-w3schools",
+    "resource_name": "W3Schools C++",
+    "clicked_at": "2026-10-29T14:31:24.343463073+01:00"
+  },
+  {
+    "user_id": 1,
+    "language_slug": "cpp",
+    "resource_id": "cpp-exercism",
+    "resource_name": "Exercism C++ Track",
+    "clicked_at": "2026-10-29T14:31:42.892959237+01:00"
+  }
+]

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Languages - Redirect</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <nav class="topbar">
+        <a class="brand" href="/">Redirect</a>
+        <div class="topbar-links">
+            {{if .User}}
+            <a href="/home">Home</a>
+            <form method="POST" action="/logout"><button type="submit" class="pill pill-soft">Log out</button></form>
+            {{else}}
+            <a href="/login">Log in</a>
+            <a href="/signup" class="pill">Sign up</a>
+            {{end}}
+        </div>
+    </nav>
+
+    <h1>Redirect</h1>
+    <p>Your gate way to great learning:</p>
+
+    <div class="card-list">
+        {{range .Languages}}
+        <a class="card" href="/language/{{.Slug}}"{{if not $.User}} data-guest="1"{{end}}>{{.Name}}</a>
+        {{end}}
+    </div>
+
+    {{if not .User}}
+    <div class="popup-overlay{{if .NeedLogin}} show{{end}}" id="popup">
+        <div class="popup-wrap">
+            <a class="popup-box" href="/signup">
+                <strong>Oops! You need an account first 🔒</strong>
+                <span>Sign up for free to open a language and get 10 great places to learn it.</span>
+                <em>Click here to sign up →</em>
+            </a>
+            <p class="popup-extra">
+                Already have an account? <a href="/login">Log in</a> ·
+                <button type="button" class="link-button" id="popup-close">Not now</button>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        var popup = document.getElementById("popup");
+        document.querySelectorAll("a[data-guest]").forEach(function (card) {
+            card.addEventListener("click", function (e) {
+                e.preventDefault();
+                popup.classList.add("show");
+            });
+        });
+        function closePopup() { popup.classList.remove("show"); }
+        document.getElementById("popup-close").addEventListener("click", closePopup);
+        popup.addEventListener("click", function (e) { if (e.target === popup) closePopup(); });
+        document.addEventListener("keydown", function (e) { if (e.key === "Escape") closePopup(); });
+    </script>
+    {{end}}
+</body>
+</html>

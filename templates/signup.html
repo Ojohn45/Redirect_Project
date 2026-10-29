@@ -11,15 +11,21 @@
                 <h1>Create Your Account</h1>
                 <p class="auth-subtext">Join Redirect and start tracking your learning.</p>
 
+                {{if .Error}}<p class="form-error">{{.Error}}</p>{{end}}
+
                 <form method="POST" action="/signup">
                     <label>Full Name</label>
-                    <input type="text" name="full_name" required>
+                    <input type="text" name="full_name" value="{{.FullName}}" autocomplete="name" required>
 
                     <label>Username</label>
-                    <input type="text" name="username" required>
+                    <input type="text" name="username" value="{{.Username}}" autocomplete="username" required>
+
+                    <label>Email</label>
+                    <input type="email" name="email" value="{{.Email}}" autocomplete="email" required>
+                    <p class="field-hint">We'll send you a welcome message</p>
 
                     <label>Password</label>
-                    <input type="password" name="password" required>
+                    <input type="password" name="password" autocomplete="new-password" required>
                     <p class="field-hint">Must contain both letters and numbers</p>
 
                     <button type="submit" class="btn-filled full-width">Sign Up</button>

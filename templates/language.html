@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{.Lang.Name}} - Redirect</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <nav class="topbar">
+        <a class="brand" href="/">Redirect</a>
+        <div class="topbar-links">
+            {{if .User}}
+            <a href="/home">Home</a>
+            <form method="POST" action="/logout"><button type="submit" class="pill pill-soft">Log out</button></form>
+            {{else}}
+            <a href="/login">Log in</a>
+            <a href="/signup" class="pill">Sign up</a>
+            {{end}}
+        </div>
+    </nav>
+
+    <p><a href="/languages">← All languages</a></p>
+    <h1>Learn {{.Lang.Name}}</h1>
+    <p>{{len .Lang.Resources}} great places to start - click any one:</p>
+
+    <div class="card-list">
+        {{range .Lang.Resources}}
+        <a class="card site-card" href="/go/{{$.Lang.Slug}}/{{.ID}}">
+            <strong>{{.Name}}</strong>
+            <span>{{.Description}}</span>
+        </a>
+        {{end}}
+    </div>
+</body>
+</html>

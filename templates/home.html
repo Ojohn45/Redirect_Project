@@ -1,16 +1,42 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Redirect</title>
+    <title>Home - Redirect</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <h1>Redirect</h1>
-    <p>Your gate way to great learning:</p>
-    <ul>
-        {{range .}}
-        <li><a href="/language/{{.Slug}}">{{.Name}}</a></li>
+    <nav class="topbar">
+        <a class="brand" href="/">Redirect</a>
+        <div class="topbar-links">
+            {{if .User}}
+            <a href="/home">Home</a>
+            <form method="POST" action="/logout"><button type="submit" class="pill pill-soft">Log out</button></form>
+            {{else}}
+            <a href="/login">Log in</a>
+            <a href="/signup" class="pill">Sign up</a>
+            {{end}}
+        </div>
+    </nav>
+
+    <section class="dashboard">
+        <h1>Welcome, {{.User.FullName}}! 👋</h1>
+        <p>Ready to learn something new today?</p>
+
+        <a href="/languages" class="pill browse-btn">
+            <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            Browse
+        </a>
+
+        {{if .Recent}}
+        <h2 class="section-title">Recently visited</h2>
+        <div class="card-list">
+            {{range .Recent}}
+            <a class="card site-card" href="/go/{{.LanguageSlug}}/{{.ResourceID}}">
+                <strong>{{.ResourceName}}</strong>
+            </a>
+            {{end}}
+        </div>
         {{end}}
-    </ul>
+    </section>
 </body>
 </html>
