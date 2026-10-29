@@ -22,6 +22,9 @@ import (
 //
 // The other details have defaults below, and can be changed with
 // ADMIN_EMAIL, ADMIN_FULLNAME and ADMIN_USERNAME.
+//
+// This only happens while there is NO head admin yet. If an account with the
+// admin email already exists, it is upgraded to head admin.
 
 func seedHeadAdmin() {
 	if _, exists := headAdmin(); exists {
@@ -43,6 +46,17 @@ func seedHeadAdmin() {
 		log.Println("Could not create head admin:", err)
 		return
 	}
+	// If this email already has a normal account (for example from an earlier
+	// test signup), upgrade THAT account instead of failing.
+	if existing, found := findUserByEmail(email); found {
+		if err := promoteToHeadAdmin(existing.ID, fullName, username, string(hash)); err != nil {
+			log.Println("Could not make", existing.Username, "the head admin:", err, "(another account may already use the username", username+")")
+			return
+		}
+		log.Printf("Existing account %q upgraded to head admin. Log in as %q with your ADMIN_PASSWORD.", existing.Username, username)
+		return
+	}
+
 	if _, err := createUser(fullName, username, email, string(hash), RoleHeadAdmin); err != nil {
 		log.Println("Could not create head admin:", err, "(is that username/email already used by another account?)")
 		return

@@ -344,3 +344,34 @@ func markInviteUsed(token string) error {
 	}
 	return nil
 }
+
+// promoteToHeadAdmin turns an EXISTING account into the head admin and
+// sets its name, username and password hash. Used when the server starts.
+func promoteToHeadAdmin(id int, fullName, username, passwordHash string) error {
+	mu.Lock()
+	defer mu.Unlock()
+
+	idx := -1
+	for i, u := range users {
+		if u.ID == id {
+			idx = i
+		} else if strings.EqualFold(u.Username, username) {
+			return ErrUsernameTaken // some OTHER account already uses that username
+		}
+	}
+	if idx < 0 {
+		return errors.New("user not found")
+	}
+
+	old := users[idx]
+	users[idx].FullName = fullName
+	users[idx].Username = username
+	users[idx].PasswordHash = passwordHash
+	users[idx].Role = RoleHeadAdmin
+
+	if err := saveJSON(usersFile, users); err != nil {
+		users[idx] = old
+		return err
+	}
+	return nil
+}
