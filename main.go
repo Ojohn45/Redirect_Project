@@ -159,6 +159,8 @@ func main() {
 	mux.HandleFunc("POST /login", loginHandler)
 	mux.HandleFunc("POST /logout", logoutHandler)
 	mux.HandleFunc("GET /goodbye", goodbyePageHandler)
+	mux.HandleFunc("GET /admin/login", adminLoginPageHandler)
+	mux.HandleFunc("POST /admin/login", adminLoginHandler)
 
 	mux.HandleFunc("GET /admin", adminPageHandler)
 	mux.HandleFunc("GET /admin/invite", inviteAdminPageHandler)

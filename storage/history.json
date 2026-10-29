@@ -19,5 +19,12 @@
     "resource_id": "cpp-exercism",
     "resource_name": "Exercism C++ Track",
     "clicked_at": "2026-10-29T14:31:42.892959237+01:00"
+  },
+  {
+    "user_id": 1,
+    "language_slug": "sql",
+    "resource_id": "sql-sqlzoo",
+    "resource_name": "SQLZoo",
+    "clicked_at": "2026-10-29T22:51:49.373489289+01:00"
   }
 ]

@@ -226,20 +226,29 @@ func loginPageHandler(w http.ResponseWriter, r *http.Request) {
 	render(w, "login.html", PageData{Created: r.URL.Query().Get("created") == "1"})
 }
 
-func loginHandler(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
-
-	username := strings.TrimSpace(r.FormValue("username"))
-	password := r.FormValue("password")
-
+// authenticate checks a username + password. One check, used by both login doors.
+func authenticate(username, password string) (User, bool) {
 	user, found := findUserByUsername(username)
 	hash := dummyHash
 	if found {
 		hash = []byte(user.PasswordHash)
 	}
 	err := bcrypt.CompareHashAndPassword(hash, []byte(password))
-
 	if !found || err != nil {
+		return User{}, false
+	}
+	return user, true
+}
+
+// Door 1: the normal login page (everyone, admins included).
+func loginHandler(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
+	username := strings.TrimSpace(r.FormValue("username"))
+	password := r.FormValue("password")
+
+	user, ok := authenticate(username, password)
+	if !ok {
 		w.WriteHeader(http.StatusUnauthorized)
 		render(w, "login.html", PageData{Error: "Invalid username or password", Username: username})
 		return
@@ -251,6 +260,38 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, homeFor(&user), http.StatusSeeOther)
+}
+
+// Door 2: the admin login page (correct password AND must be an admin).
+func adminLoginPageHandler(w http.ResponseWriter, r *http.Request) {
+	if u := currentUser(r); u != nil {
+		http.Redirect(w, r, homeFor(u), http.StatusSeeOther)
+		return
+	}
+	render(w, "admin-login.html", PageData{})
+}
+
+func adminLoginHandler(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
+	username := strings.TrimSpace(r.FormValue("username"))
+	password := r.FormValue("password")
+
+	user, ok := authenticate(username, password)
+	if !ok || !user.IsAdmin() {
+		// Same message for "wrong password" and "not an admin", so nobody can
+		// use this page to find out which usernames are admins.
+		w.WriteHeader(http.StatusUnauthorized)
+		render(w, "admin-login.html", PageData{Error: "Invalid admin username or password", Username: username})
+		return
+	}
+
+	if err := startSession(w, user.ID); err != nil {
+		log.Println("Error starting session:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, "/admin", http.StatusSeeOther)
 }
 
 // Where to send someone right after they log in.
