@@ -17,6 +17,18 @@ type PageData struct {
 	Lang      Language
 	Recent    []HistoryEntry
 
+	// Admin pages
+	HeadAdmin   *User
+	UserRows    []UserRow
+	TotalUsers  int
+	OnlineUsers int
+	Info        string // green message
+	InviteLink  string // link to share by hand if the email could not be sent
+	Token       string // invite token (accept page)
+	InviteEmail string
+	Existing    bool // the invited email already has an account
+	CanAccept   bool // ...and the visitor is logged into it
+
 	Error     string
 	Created   bool // "account created" message on the login page
 	NeedLogin bool // show the "please sign up" popup on page load
@@ -146,6 +158,14 @@ func main() {
 	mux.HandleFunc("GET /login", loginPageHandler)
 	mux.HandleFunc("POST /login", loginHandler)
 	mux.HandleFunc("POST /logout", logoutHandler)
+	mux.HandleFunc("GET /goodbye", goodbyePageHandler)
+
+	mux.HandleFunc("GET /admin", adminPageHandler)
+	mux.HandleFunc("GET /admin/invite", inviteAdminPageHandler)
+	mux.HandleFunc("POST /admin/invite", inviteAdminHandler)
+	mux.HandleFunc("GET /admin/users", usersPageHandler)
+	mux.HandleFunc("GET /admin/accept", acceptAdminPageHandler)
+	mux.HandleFunc("POST /admin/accept", acceptAdminHandler)
 
 	fileServer := http.FileServer(http.Dir("static"))
 	mux.Handle("GET /static/", http.StripPrefix("/static/", fileServer))

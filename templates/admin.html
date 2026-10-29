@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin - Redirect</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="wide">
+    {{template "topbar" .}}
+
+    {{if .HeadAdmin.FullName}}
+    <div class="head-admin-card">
+        <span class="head-admin-label">HEAD ADMIN</span>
+        <strong class="head-admin-name">{{.HeadAdmin.FullName}}</strong>
+        <small>@{{.HeadAdmin.Username}} · {{.HeadAdmin.Email}}</small>
+    </div>
+    {{end}}
+
+    <h1 class="center">Admin Page</h1>
+
+    <div class="admin-about">
+        <p>
+            Welcome to the admin team! 🎉 Admins are the people who keep Redirect healthy and help it grow.
+            As an admin, you look after our community of learners: you keep an eye on how many people have joined
+            and who is active, help new learners feel welcome, and support anyone who runs into trouble.
+            You also help the platform improve by spotting problems early, like broken links or confusing pages,
+            and by suggesting new programming languages and great learning resources to add.
+            Most importantly, you treat every user's information with care and respect, and you never share it with anyone.
+            Together we make Redirect the easiest place to start learning to code.
+        </p>
+    </div>
+
+    <div class="admin-actions">
+        {{if .User.IsHeadAdmin}}
+        <a href="/admin/invite" class="admin-btn">Invite an Admin</a>
+        {{end}}
+        <a href="/admin/users" class="admin-btn">Check Users</a>
+    </div>
+</body>
+</html>

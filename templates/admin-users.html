@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Users - Redirect</title>
+    <meta http-equiv="refresh" content="30">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="wide">
+    {{template "topbar" .}}
+
+    <p><a href="/admin">← Back to admin page</a></p>
+
+    <div class="users-panel">
+        <h2 class="users-title">Users</h2>
+
+        <p class="users-summary">
+            <strong>{{.TotalUsers}}</strong> total · <span class="status-online"><strong>{{.OnlineUsers}}</strong> online</span>
+        </p>
+
+        <div class="table-scroll">
+            <table class="users-table">
+                <thead>
+                    <tr><th>Full name</th><th>Username</th><th>Email</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                    {{range .UserRows}}
+                    <tr>
+                        <td>{{.FullName}}{{if ne .Role "User"}} <span class="role-badge">{{.Role}}</span>{{end}}</td>
+                        <td>{{.Username}}</td>
+                        <td>{{.Email}}</td>
+                        <td>{{if .Online}}<span class="status-online">● Online</span>{{else}}<span class="status-offline">○ Offline</span>{{end}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

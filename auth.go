@@ -37,6 +37,30 @@ func isValidPassword(password string) bool {
 	return hasLetter && hasNumber
 }
 
+// ---------- Who is online? ----------
+// We remember the last time each user opened a page.
+// "Online" = seen within the last 5 minutes (and not logged out).
+
+const onlineWindow = 5 * time.Minute
+
+var (
+	lastSeen   = map[int]time.Time{}
+	lastSeenMu sync.Mutex
+)
+
+func touch(userID int) {
+	lastSeenMu.Lock()
+	lastSeen[userID] = time.Now()
+	lastSeenMu.Unlock()
+}
+
+func isOnline(userID int) bool {
+	lastSeenMu.Lock()
+	defer lastSeenMu.Unlock()
+	t, ok := lastSeen[userID]
+	return ok && time.Since(t) < onlineWindow
+}
+
 // ---------- Sessions (the "you are logged in" cookie) ----------
 
 const (
@@ -80,6 +104,11 @@ func startSession(w http.ResponseWriter, userID int) error {
 func endSession(w http.ResponseWriter, r *http.Request) {
 	if c, err := r.Cookie(sessionCookie); err == nil {
 		sessionsMu.Lock()
+		if s, ok := sessions[c.Value]; ok {
+			lastSeenMu.Lock()
+			delete(lastSeen, s.userID) // logged out = offline right away
+			lastSeenMu.Unlock()
+		}
 		delete(sessions, c.Value)
 		sessionsMu.Unlock()
 	}
@@ -108,14 +137,15 @@ func currentUser(r *http.Request) *User {
 	if !found {
 		return nil
 	}
+	touch(u.ID)
 	return &u
 }
 
 // ---------- Signup ----------
 
 func signupPageHandler(w http.ResponseWriter, r *http.Request) {
-	if currentUser(r) != nil {
-		http.Redirect(w, r, "/home", http.StatusSeeOther)
+	if u := currentUser(r); u != nil {
+		http.Redirect(w, r, homeFor(u), http.StatusSeeOther)
 		return
 	}
 	render(w, "signup.html", PageData{})
@@ -163,7 +193,7 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = createUser(fullName, username, email, string(hashedPassword))
+	_, err = createUser(fullName, username, email, string(hashedPassword), "")
 	switch {
 	case errors.Is(err, ErrUsernameTaken):
 		fail("That username is already taken")
@@ -189,8 +219,8 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 var dummyHash, _ = bcrypt.GenerateFromPassword([]byte("not-a-real-password1"), bcrypt.DefaultCost)
 
 func loginPageHandler(w http.ResponseWriter, r *http.Request) {
-	if currentUser(r) != nil {
-		http.Redirect(w, r, "/home", http.StatusSeeOther)
+	if u := currentUser(r); u != nil {
+		http.Redirect(w, r, homeFor(u), http.StatusSeeOther)
 		return
 	}
 	render(w, "login.html", PageData{Created: r.URL.Query().Get("created") == "1"})
@@ -220,20 +250,30 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(w, r, "/home", http.StatusSeeOther)
+	http.Redirect(w, r, homeFor(&user), http.StatusSeeOther)
+}
+
+// Where to send someone right after they log in.
+func homeFor(u *User) string {
+	if u.IsAdmin() {
+		return "/admin"
+	}
+	return "/home"
 }
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	endSession(w, r)
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, "/goodbye", http.StatusSeeOther)
 }
 
-// ---------- Welcome email ----------
+// ---------- Email ----------
 //
 // Set these environment variables before starting the server:
 //   SMTP_USER  your Gmail address
 //   SMTP_PASS  a Gmail "App Password" (NOT your normal password)
 // Optional: SMTP_HOST (default smtp.gmail.com), SMTP_PORT (default 587), SMTP_FROM
+
+var errEmailNotConfigured = errors.New("email is not configured (SMTP_USER / SMTP_PASS missing)")
 
 func getenv(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
@@ -242,22 +282,34 @@ func getenv(key, fallback string) string {
 	return fallback
 }
 
-func sendWelcomeEmail(toEmail, fullName string) {
+// sendEmail sends a plain-text email. toEmail must already be validated.
+func sendEmail(toEmail, subject, body string) error {
 	user := os.Getenv("SMTP_USER")
 	pass := strings.ReplaceAll(os.Getenv("SMTP_PASS"), " ", "") // Google shows App Passwords with spaces
 	if user == "" || pass == "" {
-		log.Println("Email not configured (SMTP_USER / SMTP_PASS missing) - skipping welcome email to", toEmail)
-		return
+		return errEmailNotConfigured
 	}
 
 	host := getenv("SMTP_HOST", "smtp.gmail.com")
 	port := getenv("SMTP_PORT", "587")
 	from := getenv("SMTP_FROM", user)
 
-	firstName := strings.Fields(fullName)
+	body = strings.ReplaceAll(body, "\n", "\r\n")
+	msg := "From: Redirect <" + from + ">\r\n" +
+		"To: " + toEmail + "\r\n" +
+		"Subject: " + mime.QEncoding.Encode("utf-8", subject) + "\r\n" +
+		"MIME-Version: 1.0\r\n" +
+		"Content-Type: text/plain; charset=UTF-8\r\n" +
+		"\r\n" + body
+
+	auth := smtp.PlainAuth("", user, pass, host)
+	return smtp.SendMail(net.JoinHostPort(host, port), auth, from, []string{toEmail}, []byte(msg))
+}
+
+func sendWelcomeEmail(toEmail, fullName string) {
 	name := fullName
-	if len(firstName) > 0 {
-		name = firstName[0]
+	if parts := strings.Fields(fullName); len(parts) > 0 {
+		name = parts[0]
 	}
 
 	body := "Hi " + name + ",\n\n" +
@@ -269,19 +321,14 @@ func sendWelcomeEmail(toEmail, fullName string) {
 		"Log in, tap Browse, choose a language, and start learning today.\n\n" +
 		"Happy coding!\n" +
 		"The Redirect Team\n"
-	body = strings.ReplaceAll(body, "\n", "\r\n")
 
-	msg := "From: Redirect <" + from + ">\r\n" +
-		"To: " + toEmail + "\r\n" +
-		"Subject: " + mime.QEncoding.Encode("utf-8", "Welcome to Redirect 🎉") + "\r\n" +
-		"MIME-Version: 1.0\r\n" +
-		"Content-Type: text/plain; charset=UTF-8\r\n" +
-		"\r\n" + body
-
-	auth := smtp.PlainAuth("", user, pass, host)
-	if err := smtp.SendMail(net.JoinHostPort(host, port), auth, from, []string{toEmail}, []byte(msg)); err != nil {
+	err := sendEmail(toEmail, "Welcome to Redirect 🎉", body)
+	switch {
+	case errors.Is(err, errEmailNotConfigured):
+		log.Println("Email not configured - skipping welcome email to", toEmail)
+	case err != nil:
 		log.Println("Could not send welcome email to", toEmail, ":", err)
-		return
+	default:
+		log.Println("Welcome email sent to", toEmail)
 	}
-	log.Println("Welcome email sent to", toEmail)
 }

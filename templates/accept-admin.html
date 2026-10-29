@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Become an Admin - Redirect</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <section class="accept-box">
+        <h1 class="center">Become an Admin</h1>
+
+        {{if .Error}}<p class="form-error">{{.Error}}</p>{{end}}
+
+        {{if .Token}}
+            <p class="center">You've been invited to join the Redirect admin team as <strong>{{.InviteEmail}}</strong>. 🎉</p>
+
+            {{if .CanAccept}}
+                <form method="POST" action="/admin/accept">
+                    <input type="hidden" name="token" value="{{.Token}}">
+                    <button type="submit" class="send-btn">Accept and become an admin</button>
+                </form>
+            {{else if .Existing}}
+                <p class="center">An account with this email already exists. Please
+                    <a href="/login">log in</a> with it first, then open this invitation link again.</p>
+            {{else}}
+                <form method="POST" action="/admin/accept" class="invite-box">
+                    <input type="hidden" name="token" value="{{.Token}}">
+
+                    <label>Full Name</label>
+                    <input type="text" name="full_name" value="{{.FullName}}" autocomplete="name" required>
+
+                    <label>Username</label>
+                    <input type="text" name="username" value="{{.Username}}" autocomplete="username" required>
+
+                    <label>Password</label>
+                    <input type="password" name="password" autocomplete="new-password" required>
+                    <p class="field-hint">Must contain both letters and numbers</p>
+
+                    <button type="submit" class="send-btn">Create admin account</button>
+                </form>
+            {{end}}
+        {{end}}
+    </section>
+</body>
+</html>

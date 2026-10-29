@@ -4,26 +4,15 @@
     <title>Languages - Redirect</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
-    <nav class="topbar">
-        <a class="brand" href="/">Redirect</a>
-        <div class="topbar-links">
-            {{if .User}}
-            <a href="/home">Home</a>
-            <form method="POST" action="/logout"><button type="submit" class="pill pill-soft">Log out</button></form>
-            {{else}}
-            <a href="/login">Log in</a>
-            <a href="/signup" class="pill">Sign up</a>
-            {{end}}
-        </div>
-    </nav>
+<body class="wide">
+    {{template "topbar" .}}
 
-    <h1>Redirect</h1>
-    <p>Your gate way to great learning:</p>
+    <h1 class="center">Redirect</h1>
+    <p class="center">Your gate way to great learning:</p>
 
-    <div class="card-list">
+    <div class="box-grid">
         {{range .Languages}}
-        <a class="card" href="/language/{{.Slug}}"{{if not $.User}} data-guest="1"{{end}}>{{.Name}}</a>
+        <a class="lang-box" href="/language/{{.Slug}}"{{if not $.User}} data-guest="1"{{end}}>{{.Name}}</a>
         {{end}}
     </div>
 

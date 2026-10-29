@@ -4,19 +4,8 @@
     <title>Home - Redirect</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
-    <nav class="topbar">
-        <a class="brand" href="/">Redirect</a>
-        <div class="topbar-links">
-            {{if .User}}
-            <a href="/home">Home</a>
-            <form method="POST" action="/logout"><button type="submit" class="pill pill-soft">Log out</button></form>
-            {{else}}
-            <a href="/login">Log in</a>
-            <a href="/signup" class="pill">Sign up</a>
-            {{end}}
-        </div>
-    </nav>
+<body class="wide">
+    {{template "topbar" .}}
 
     <section class="dashboard">
         <h1>Welcome, {{.User.FullName}}! 👋</h1>
@@ -28,10 +17,10 @@
         </a>
 
         {{if .Recent}}
-        <h2 class="section-title">Recently visited</h2>
-        <div class="card-list">
+        <h2 class="section-title center">Recently visited</h2>
+        <div class="box-grid">
             {{range .Recent}}
-            <a class="card site-card" href="/go/{{.LanguageSlug}}/{{.ResourceID}}">
+            <a class="site-box" href="/go/{{.LanguageSlug}}/{{.ResourceID}}">
                 <strong>{{.ResourceName}}</strong>
             </a>
             {{end}}

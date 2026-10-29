@@ -1,6 +1,9 @@
 package main
 
 import (
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"log"
@@ -19,7 +22,37 @@ type User struct {
 	Username     string    `json:"username"`
 	Email        string    `json:"email"`
 	PasswordHash string    `json:"password_hash"`
+	Role         string    `json:"role,omitempty"` // "" = normal user, "admin", "head_admin"
 	CreatedAt    time.Time `json:"created_at"`
+}
+
+const (
+	RoleAdmin     = "admin"
+	RoleHeadAdmin = "head_admin"
+)
+
+func (u User) IsAdmin() bool     { return u.Role == RoleAdmin || u.Role == RoleHeadAdmin }
+func (u User) IsHeadAdmin() bool { return u.Role == RoleHeadAdmin }
+
+func (u User) RoleLabel() string {
+	switch u.Role {
+	case RoleHeadAdmin:
+		return "Head Admin"
+	case RoleAdmin:
+		return "Admin"
+	}
+	return "User"
+}
+
+// An invitation for someone to become an admin.
+// We only keep a HASH of the secret token, like a password.
+type Invite struct {
+	TokenHash string    `json:"token_hash"`
+	Email     string    `json:"email"`
+	InvitedBy int       `json:"invited_by"`
+	CreatedAt time.Time `json:"created_at"`
+	ExpiresAt time.Time `json:"expires_at"`
+	Used      bool      `json:"used"`
 }
 
 type HistoryEntry struct {
@@ -37,12 +70,14 @@ const storageDir = "storage"
 var (
 	usersFile   = filepath.Join(storageDir, "users.json")
 	historyFile = filepath.Join(storageDir, "history.json")
+	invitesFile = filepath.Join(storageDir, "invites.json")
 
 	// One lock protects both slices below, so two requests
 	// can never write to the files at the same moment.
 	mu      sync.Mutex
 	users   []User
 	history []HistoryEntry
+	invites []Invite
 )
 
 var (
@@ -61,6 +96,10 @@ func initDB() {
 	if err := loadJSON(historyFile, &history); err != nil {
 		log.Fatal("Cannot read history.json:", err)
 	}
+	if err := loadJSON(invitesFile, &invites); err != nil {
+		log.Fatal("Cannot read invites.json:", err)
+	}
+	seedHeadAdmin()
 	log.Printf("Storage ready: %d user(s), %d history entries", len(users), len(history))
 }
 
@@ -95,7 +134,7 @@ func saveJSON(path string, v any) error {
 
 // ---------- Users ----------
 
-func createUser(fullName, username, email, passwordHash string) (User, error) {
+func createUser(fullName, username, email, passwordHash, role string) (User, error) {
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -118,6 +157,7 @@ func createUser(fullName, username, email, passwordHash string) (User, error) {
 		Username:     username,
 		Email:        email,
 		PasswordHash: passwordHash,
+		Role:         role,
 		CreatedAt:    time.Now(),
 	}
 	users = append(users, u)
@@ -181,4 +221,126 @@ func recentHistory(userID, n int) []HistoryEntry {
 		}
 	}
 	return out
+}
+
+// ---------- More user helpers ----------
+
+func findUserByEmail(email string) (User, bool) {
+	mu.Lock()
+	defer mu.Unlock()
+	for _, u := range users {
+		if strings.EqualFold(u.Email, email) {
+			return u, true
+		}
+	}
+	return User{}, false
+}
+
+// listUsers returns a copy of every user (oldest first).
+func listUsers() []User {
+	mu.Lock()
+	defer mu.Unlock()
+	out := make([]User, len(users))
+	copy(out, users)
+	return out
+}
+
+func headAdmin() (User, bool) {
+	mu.Lock()
+	defer mu.Unlock()
+	for _, u := range users {
+		if u.Role == RoleHeadAdmin {
+			return u, true
+		}
+	}
+	return User{}, false
+}
+
+func setUserRole(id int, role string) error {
+	mu.Lock()
+	defer mu.Unlock()
+	for i := range users {
+		if users[i].ID == id {
+			old := users[i].Role
+			users[i].Role = role
+			if err := saveJSON(usersFile, users); err != nil {
+				users[i].Role = old
+				return err
+			}
+			return nil
+		}
+	}
+	return errors.New("user not found")
+}
+
+// ---------- Admin invites ----------
+
+const inviteTTL = 7 * 24 * time.Hour
+
+func hashToken(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
+}
+
+// createInvite makes a secret token for this email. Any older unused
+// invite for the same email is replaced. The token is returned ONCE
+// (to put in the email link); only its hash is saved.
+func createInvite(email string, invitedBy int) (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	token := hex.EncodeToString(b)
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	backup := make([]Invite, len(invites))
+	copy(backup, invites)
+
+	kept := invites[:0]
+	for _, inv := range invites {
+		if !(strings.EqualFold(inv.Email, email) && !inv.Used) {
+			kept = append(kept, inv)
+		}
+	}
+	invites = append(kept, Invite{
+		TokenHash: hashToken(token),
+		Email:     email,
+		InvitedBy: invitedBy,
+		CreatedAt: time.Now(),
+		ExpiresAt: time.Now().Add(inviteTTL),
+	})
+
+	if err := saveJSON(invitesFile, invites); err != nil {
+		invites = backup
+		return "", err
+	}
+	return token, nil
+}
+
+// findInvite returns the invite only if it is unused and not expired.
+func findInvite(token string) (Invite, bool) {
+	h := hashToken(token)
+	mu.Lock()
+	defer mu.Unlock()
+	for _, inv := range invites {
+		if inv.TokenHash == h && !inv.Used && time.Now().Before(inv.ExpiresAt) {
+			return inv, true
+		}
+	}
+	return Invite{}, false
+}
+
+func markInviteUsed(token string) error {
+	h := hashToken(token)
+	mu.Lock()
+	defer mu.Unlock()
+	for i := range invites {
+		if invites[i].TokenHash == h {
+			invites[i].Used = true
+			return saveJSON(invitesFile, invites)
+		}
+	}
+	return nil
 }

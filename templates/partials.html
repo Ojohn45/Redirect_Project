@@ -1,0 +1,45 @@
+{{define "topbar"}}
+<nav class="topbar">
+    <a class="brand" href="/">Redirect</a>
+    <div class="topbar-links">
+        {{if .User}}
+        <a href="/home">Home</a>
+        {{if .User.IsAdmin}}<a href="/admin">Admin</a>{{end}}
+        <button type="button" class="pill pill-soft" id="logout-open">Log out</button>
+        {{else}}
+        <a href="/login">Log in</a>
+        <a href="/signup" class="pill">Sign up</a>
+        {{end}}
+    </div>
+</nav>
+
+{{if .User}}
+<!-- "Are you sure?" box shown when the user presses Log out -->
+<div class="popup-overlay" id="logout-modal">
+    <div class="popup-wrap">
+        <div class="popup-box static">
+            <strong>Do you really want to log out?</strong>
+            <span>You can always come back and keep learning whenever you like.</span>
+            <div class="yes-no">
+                <form method="POST" action="/logout">
+                    <button type="submit" class="btn-yes">YES</button>
+                </form>
+                <button type="button" class="btn-no" id="logout-no">NO</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    (function () {
+        var modal = document.getElementById("logout-modal");
+        document.getElementById("logout-open").addEventListener("click", function () {
+            modal.classList.add("show");
+        });
+        function close() { modal.classList.remove("show"); }
+        document.getElementById("logout-no").addEventListener("click", close);
+        modal.addEventListener("click", function (e) { if (e.target === modal) close(); });
+        document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+    })();
+</script>
+{{end}}
+{{end}}
