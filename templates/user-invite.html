@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Invite a User - Redirect</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    {{template "topbar" .}}
+
+    <p><a href="/admin">← Back to admin page</a></p>
+    <h1 class="center">Invite a User</h1>
+
+    <div class="invite-box">
+        {{if .Info}}<p class="form-success">{{.Info}}</p>{{end}}
+        {{if .Error}}<p class="form-error">{{.Error}}</p>{{end}}
+        {{if .InviteLink}}<input type="text" class="invite-link" value="{{.InviteLink}}" readonly onclick="this.select()">{{end}}
+
+        <p class="invite-note">
+            Know someone who wants to learn to code? Enter their email and we'll send them an invitation
+            to join Redirect as a learner. The email explains what Redirect is and has an
+            Accept Invite button (valid for 7 days).
+        </p>
+
+        <form method="POST" action="/admin/invite-user">
+            <input type="email" name="email" value="{{.Email}}" placeholder="Email address" required>
+            <button type="submit" class="send-btn">Send Request</button>
+        </form>
+    </div>
+</body>
+</html>

@@ -8,11 +8,12 @@
     "used": false
   },
   {
-    "token_hash": "8cf7554711e670cec408732cfaab597f5d8dc44d190737300cff7b4892d1b06b",
+    "token_hash": "f9869427a11bc47d2643b85ae6b4e592314d2e74be6eedcb5b5587c17e39f6ad",
     "email": "odumujohn60@gmail.com",
     "invited_by": 1,
-    "created_at": "2026-10-29T23:19:26.573821924+01:00",
-    "expires_at": "2026-11-05T23:19:26.573822035+01:00",
+    "for_user": true,
+    "created_at": "2026-10-30T13:00:33.059167856+01:00",
+    "expires_at": "2026-11-06T13:00:33.059168176+01:00",
     "used": false
   }
 ]

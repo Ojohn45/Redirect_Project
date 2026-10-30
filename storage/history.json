@@ -26,5 +26,12 @@
     "resource_id": "sql-sqlzoo",
     "resource_name": "SQLZoo",
     "clicked_at": "2026-10-29T22:51:49.373489289+01:00"
+  },
+  {
+    "user_id": 1,
+    "language_slug": "python",
+    "resource_id": "python-freecodecamp",
+    "resource_name": "freeCodeCamp Python Course",
+    "clicked_at": "2026-10-30T11:07:35.508892743+01:00"
   }
 ]

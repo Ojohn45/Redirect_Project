@@ -113,21 +113,51 @@ func inviteAdminPageHandler(w http.ResponseWriter, r *http.Request) {
 	render(w, "admin-invite.html", PageData{User: u})
 }
 
+func inviteUserPageHandler(w http.ResponseWriter, r *http.Request) {
+	u := requireAdmin(w, r) // ANY admin may invite normal users
+	if u == nil {
+		return
+	}
+	render(w, "user-invite.html", PageData{User: u})
+}
+
 func baseURL() string {
 	return strings.TrimRight(getenv("BASE_URL", "http://localhost:8080"), "/")
 }
 
+// Only the head admin may invite new ADMINS.
 func inviteAdminHandler(w http.ResponseWriter, r *http.Request) {
 	u := requireHeadAdmin(w, r)
 	if u == nil {
 		return
 	}
+	processInvite(w, r, u, false)
+}
+
+// Any admin may invite normal USERS.
+func inviteUserHandler(w http.ResponseWriter, r *http.Request) {
+	u := requireAdmin(w, r)
+	if u == nil {
+		return
+	}
+	processInvite(w, r, u, true)
+}
+
+// processInvite does the work for both kinds of invite.
+func processInvite(w http.ResponseWriter, r *http.Request, u *User, forUser bool) {
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
+	page := "admin-invite.html"
+	path := "/admin/accept"
+	if forUser {
+		page = "user-invite.html"
+		path = "/join"
+	}
 
 	email := strings.ToLower(strings.TrimSpace(r.FormValue("email")))
 	fail := func(msg string) {
 		w.WriteHeader(http.StatusBadRequest)
-		render(w, "admin-invite.html", PageData{User: u, Error: msg, Email: email})
+		render(w, page, PageData{User: u, Error: msg, Email: email})
 	}
 
 	addr, err := mail.ParseAddress(email)
@@ -135,30 +165,40 @@ func inviteAdminHandler(w http.ResponseWriter, r *http.Request) {
 		fail("Please enter a valid email address")
 		return
 	}
-	if existing, ok := findUserByEmail(email); ok && existing.IsAdmin() {
-		fail("That person is already an admin")
-		return
+	if existing, ok := findUserByEmail(email); ok {
+		if forUser {
+			fail("That person already has an account on Redirect")
+			return
+		}
+		if existing.IsAdmin() {
+			fail("That person is already an admin")
+			return
+		}
 	}
 
-	token, err := createInvite(email, u.ID)
+	token, err := createInvite(email, u.ID, forUser)
 	if err != nil {
 		log.Println("Could not save invite:", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	link := baseURL() + "/admin/accept?token=" + token
+	link := baseURL() + path + "?token=" + token
 
-	body := "Hello,\n\n" +
-		u.FullName + " (Head Admin) has invited you to become an admin on Redirect.\n\n" +
-		"As an admin you will help look after the Redirect community: support learners, keep an eye on how the platform is doing, " +
-		"report problems early, and suggest new languages and learning resources so Redirect can keep growing.\n\n" +
-		"Accept the invitation here (the link works for 7 days):\n" + link + "\n\n" +
-		"If you weren't expecting this, you can safely ignore this email.\n\n" +
-		"The Redirect Team\n"
+	var subject, intro, extra string
+	if forUser {
+		subject = "You're invited to join Redirect 🎉"
+		intro = "has invited you to join Redirect."
+	} else {
+		subject = "You're invited to be an admin on Redirect"
+		intro = "(Head Admin) has invited you to become an admin on Redirect."
+		extra = "As an admin you will help look after the Redirect community: support learners, keep an eye on how the platform is doing, " +
+			"report problems early, and suggest new languages and learning resources so Redirect can keep growing."
+	}
+	text, htmlBody := inviteEmail(u.FullName, intro, extra, link)
 
-	// Send in the background, but wait up to 15 seconds to tell the head admin how it went.
+	// Send in the background, but wait up to 15 seconds to tell the admin how it went.
 	done := make(chan error, 1)
-	go func() { done <- sendEmail(email, "You're invited to be an admin on Redirect", body) }()
+	go func() { done <- sendEmail(email, subject, text, htmlBody) }()
 	var sendErr error
 	select {
 	case sendErr = <-done:
@@ -169,17 +209,22 @@ func inviteAdminHandler(w http.ResponseWriter, r *http.Request) {
 	data := PageData{User: u}
 	switch {
 	case sendErr == nil:
+		log.Println("Invite email sent to", email)
 		data.Info = "Invitation sent to " + email + " ✅"
 	case errors.Is(sendErr, errEmailNotConfigured):
 		log.Println("Invite link for", email, ":", link)
-		data.Info = "Email isn't set up on this server yet, so nothing was emailed. Send this link to " + email + " yourself:"
+		data.Info = "Email isn't set up yet, so nothing was emailed. Add SMTP_USER and SMTP_PASS to your .env file and restart the server. For now, send this link to " + email + " yourself:"
 		data.InviteLink = link
 	default:
 		log.Println("Could not email invite to", email, ":", sendErr)
-		data.Error = "The invitation was saved, but the email could not be sent. You can send this link yourself:"
+		hint := ""
+		if msg := sendErr.Error(); strings.Contains(msg, "535") || strings.Contains(msg, "Username and Password not accepted") {
+			hint = " Gmail refused the login: check SMTP_USER in your .env, and make sure SMTP_PASS is a Gmail App Password (not your normal password)."
+		}
+		data.Error = "The invitation was saved, but the email could not be sent (" + sendErr.Error() + ")." + hint + " You can send this link yourself:"
 		data.InviteLink = link
 	}
-	render(w, "admin-invite.html", data)
+	render(w, page, data)
 }
 
 // A row in the "Check Users" table. Passwords are never included.
@@ -218,9 +263,9 @@ func usersPageHandler(w http.ResponseWriter, r *http.Request) {
 
 // ---------- Accepting an invitation (opened from the email link) ----------
 
-func acceptPageData(r *http.Request, token string) (PageData, bool) {
+func acceptPageData(r *http.Request, token string, forUser bool) (PageData, bool) {
 	inv, ok := findInvite(token)
-	if !ok {
+	if !ok || inv.ForUser != forUser { // an admin link can't be used on the user page, and vice versa
 		return PageData{Error: "This invitation link is invalid or has expired. Ask the head admin to send a new one."}, false
 	}
 	data := PageData{Token: token, InviteEmail: inv.Email}
@@ -234,7 +279,7 @@ func acceptPageData(r *http.Request, token string) (PageData, bool) {
 }
 
 func acceptAdminPageHandler(w http.ResponseWriter, r *http.Request) {
-	data, ok := acceptPageData(r, r.URL.Query().Get("token"))
+	data, ok := acceptPageData(r, r.URL.Query().Get("token"), false)
 	data.User = currentUser(r)
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
@@ -246,7 +291,7 @@ func acceptAdminHandler(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	token := r.FormValue("token")
 
-	data, ok := acceptPageData(r, token)
+	data, ok := acceptPageData(r, token, false)
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
 		render(w, "accept-admin.html", data)
@@ -322,6 +367,85 @@ func acceptAdminHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, "/admin", http.StatusSeeOther)
+}
+
+// ---------- A normal user accepting an invitation (opened from the email link) ----------
+
+func joinPageHandler(w http.ResponseWriter, r *http.Request) {
+	data, ok := acceptPageData(r, r.URL.Query().Get("token"), true)
+	data.User = currentUser(r)
+	if !ok {
+		w.WriteHeader(http.StatusBadRequest)
+	}
+	render(w, "join.html", data)
+}
+
+func joinHandler(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	token := r.FormValue("token")
+
+	data, ok := acceptPageData(r, token, true)
+	if !ok {
+		w.WriteHeader(http.StatusBadRequest)
+		render(w, "join.html", data)
+		return
+	}
+	fail := func(msg string) {
+		data.Error = msg
+		data.FullName = strings.TrimSpace(r.FormValue("full_name"))
+		data.Username = strings.TrimSpace(r.FormValue("username"))
+		w.WriteHeader(http.StatusBadRequest)
+		render(w, "join.html", data)
+	}
+
+	if data.Existing {
+		fail("An account with this email already exists. Please log in instead.")
+		return
+	}
+
+	fullName := strings.TrimSpace(r.FormValue("full_name"))
+	username := strings.TrimSpace(r.FormValue("username"))
+	password := r.FormValue("password")
+
+	if fullName == "" || username == "" || password == "" {
+		fail("All fields are required")
+		return
+	}
+	if !isValidPassword(password) {
+		fail("Password must contain both letters and numbers")
+		return
+	}
+	if len(password) > 72 {
+		fail("Password is too long (max 72 characters)")
+		return
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	newUser, err := createUser(fullName, username, data.InviteEmail, string(hash), "") // "" = normal user
+	switch {
+	case errors.Is(err, ErrUsernameTaken):
+		fail("That username is already taken")
+		return
+	case errors.Is(err, ErrEmailTaken):
+		fail("An account with this email already exists")
+		return
+	case err != nil:
+		log.Println("Error saving invited user:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	markInviteUsed(token)
+	go sendWelcomeEmail(data.InviteEmail, fullName)
+	if err := startSession(w, newUser.ID); err != nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+	http.Redirect(w, r, "/home", http.StatusSeeOther)
 }
 
 // ---------- Logout goodbye ----------

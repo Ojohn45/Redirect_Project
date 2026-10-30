@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Join Redirect</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <section class="accept-box">
+        <h1 class="center">Join Redirect 🎉</h1>
+
+        {{if .Error}}<p class="form-error">{{.Error}}</p>{{end}}
+
+        {{if .Token}}
+            <p class="center">You've been invited to join Redirect as <strong>{{.InviteEmail}}</strong>. 🎉</p>
+
+            {{if .Existing}}
+                <p class="center">An account with this email already exists. Please
+                    <a href="/login">log in</a> instead.</p>
+            {{else}}
+                <form method="POST" action="/join" class="invite-box">
+                    <input type="hidden" name="token" value="{{.Token}}">
+
+                    <label>Full Name</label>
+                    <input type="text" name="full_name" value="{{.FullName}}" autocomplete="name" required>
+
+                    <label>Username</label>
+                    <input type="text" name="username" value="{{.Username}}" autocomplete="username" required>
+
+                    <label>Password</label>
+                    <input type="password" name="password" autocomplete="new-password" required>
+                    <p class="field-hint">Must contain both letters and numbers</p>
+
+                    <button type="submit" class="send-btn">Create my account</button>
+                </form>
+            {{end}}
+        {{end}}
+    </section>
+</body>
+</html>

@@ -1,0 +1,7 @@
+# secrets and user data - never upload these
+.env
+storage/
+
+# editor + build files
+.vscode/
+redirect-test

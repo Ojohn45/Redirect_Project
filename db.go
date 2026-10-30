@@ -50,6 +50,7 @@ type Invite struct {
 	TokenHash string    `json:"token_hash"`
 	Email     string    `json:"email"`
 	InvitedBy int       `json:"invited_by"`
+	ForUser   bool      `json:"for_user,omitempty"` // true = invite a normal user; false = invite an admin
 	CreatedAt time.Time `json:"created_at"`
 	ExpiresAt time.Time `json:"expires_at"`
 	Used      bool      `json:"used"`
@@ -285,7 +286,7 @@ func hashToken(token string) string {
 // createInvite makes a secret token for this email. Any older unused
 // invite for the same email is replaced. The token is returned ONCE
 // (to put in the email link); only its hash is saved.
-func createInvite(email string, invitedBy int) (string, error) {
+func createInvite(email string, invitedBy int, forUser bool) (string, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
 		return "", err
@@ -308,6 +309,7 @@ func createInvite(email string, invitedBy int) (string, error) {
 		TokenHash: hashToken(token),
 		Email:     email,
 		InvitedBy: invitedBy,
+		ForUser:   forUser,
 		CreatedAt: time.Now(),
 		ExpiresAt: time.Now().Add(inviteTTL),
 	})

@@ -143,6 +143,8 @@ func redirectHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	loadDotEnv() // read settings from the .env file first
+	logEmailStatus()
 	initDB()
 
 	mux := http.NewServeMux()
@@ -165,7 +167,11 @@ func main() {
 	mux.HandleFunc("GET /admin", adminPageHandler)
 	mux.HandleFunc("GET /admin/invite", inviteAdminPageHandler)
 	mux.HandleFunc("POST /admin/invite", inviteAdminHandler)
+	mux.HandleFunc("GET /admin/invite-user", inviteUserPageHandler)
+	mux.HandleFunc("POST /admin/invite-user", inviteUserHandler)
 	mux.HandleFunc("GET /admin/users", usersPageHandler)
+	mux.HandleFunc("GET /join", joinPageHandler)
+	mux.HandleFunc("POST /join", joinHandler)
 	mux.HandleFunc("GET /admin/accept", acceptAdminPageHandler)
 	mux.HandleFunc("POST /admin/accept", acceptAdminHandler)
 

@@ -5,12 +5,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"log"
-	"mime"
-	"net"
 	"net/http"
 	"net/mail"
-	"net/smtp"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -305,71 +301,4 @@ func homeFor(u *User) string {
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	endSession(w, r)
 	http.Redirect(w, r, "/goodbye", http.StatusSeeOther)
-}
-
-// ---------- Email ----------
-//
-// Set these environment variables before starting the server:
-//   SMTP_USER  your Gmail address
-//   SMTP_PASS  a Gmail "App Password" (NOT your normal password)
-// Optional: SMTP_HOST (default smtp.gmail.com), SMTP_PORT (default 587), SMTP_FROM
-
-var errEmailNotConfigured = errors.New("email is not configured (SMTP_USER / SMTP_PASS missing)")
-
-func getenv(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
-}
-
-// sendEmail sends a plain-text email. toEmail must already be validated.
-func sendEmail(toEmail, subject, body string) error {
-	user := os.Getenv("SMTP_USER")
-	pass := strings.ReplaceAll(os.Getenv("SMTP_PASS"), " ", "") // Google shows App Passwords with spaces
-	if user == "" || pass == "" {
-		return errEmailNotConfigured
-	}
-
-	host := getenv("SMTP_HOST", "smtp.gmail.com")
-	port := getenv("SMTP_PORT", "587")
-	from := getenv("SMTP_FROM", user)
-
-	body = strings.ReplaceAll(body, "\n", "\r\n")
-	msg := "From: Redirect <" + from + ">\r\n" +
-		"To: " + toEmail + "\r\n" +
-		"Subject: " + mime.QEncoding.Encode("utf-8", subject) + "\r\n" +
-		"MIME-Version: 1.0\r\n" +
-		"Content-Type: text/plain; charset=UTF-8\r\n" +
-		"\r\n" + body
-
-	auth := smtp.PlainAuth("", user, pass, host)
-	return smtp.SendMail(net.JoinHostPort(host, port), auth, from, []string{toEmail}, []byte(msg))
-}
-
-func sendWelcomeEmail(toEmail, fullName string) {
-	name := fullName
-	if parts := strings.Fields(fullName); len(parts) > 0 {
-		name = parts[0]
-	}
-
-	body := "Hi " + name + ",\n\n" +
-		"Welcome to Redirect! 🎉 Your account has been created successfully.\n\n" +
-		"Here's how Redirect makes learning to code so much easier:\n\n" +
-		"  • No more endless searching - pick a programming language and we point you straight to 10 of the best places to learn it.\n" +
-		"  • Hand-picked resources: official docs, interactive tutorials, full courses and hands-on practice sites.\n" +
-		"  • Your visits are saved, so you never lose your place.\n\n" +
-		"Log in, tap Browse, choose a language, and start learning today.\n\n" +
-		"Happy coding!\n" +
-		"The Redirect Team\n"
-
-	err := sendEmail(toEmail, "Welcome to Redirect 🎉", body)
-	switch {
-	case errors.Is(err, errEmailNotConfigured):
-		log.Println("Email not configured - skipping welcome email to", toEmail)
-	case err != nil:
-		log.Println("Could not send welcome email to", toEmail, ":", err)
-	default:
-		log.Println("Welcome email sent to", toEmail)
-	}
 }
