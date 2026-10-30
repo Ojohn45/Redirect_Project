@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"crypto/rand"
+	"crypto/tls"
 	"encoding/hex"
 	"errors"
 	"html"
@@ -84,8 +85,51 @@ func logEmailStatus() {
 	case user == "" || pass == "":
 		log.Println("EMAIL: only one of SMTP_USER / SMTP_PASS is set - you need both")
 	default:
-		log.Println("EMAIL: ready, sending from", user)
+		log.Println("EMAIL: settings found, testing the login with Gmail...")
+		go checkEmailLogin() // runs in the background, result appears in a few seconds
 	}
+}
+
+// checkEmailLogin connects to the mail server and logs in, WITHOUT sending
+// anything, so you find out at startup if the Gmail details are right.
+func checkEmailLogin() {
+	user := os.Getenv("SMTP_USER")
+	pass := strings.ReplaceAll(os.Getenv("SMTP_PASS"), " ", "")
+	host := getenv("SMTP_HOST", "smtp.gmail.com")
+	port := getenv("SMTP_PORT", "587")
+
+	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, port), 10*time.Second)
+	if err != nil {
+		log.Println("EMAIL CHECK: could not reach", host, "- is your internet working?", err)
+		return
+	}
+	conn.SetDeadline(time.Now().Add(15 * time.Second)) // never wait forever
+	c, err := smtp.NewClient(conn, host)
+	if err != nil {
+		log.Println("EMAIL CHECK: the mail server did not answer properly:", err)
+		return
+	}
+	defer c.Close()
+
+	if err := c.Hello("localhost"); err != nil {
+		log.Println("EMAIL CHECK: the mail server did not answer properly:", err)
+		return
+	}
+	if ok, _ := c.Extension("STARTTLS"); ok {
+		if err := c.StartTLS(&tls.Config{ServerName: host}); err != nil {
+			log.Println("EMAIL CHECK: could not make a secure connection:", err)
+			return
+		}
+	}
+	if err := c.Auth(smtp.PlainAuth("", user, pass, host)); err != nil {
+		log.Println("EMAIL CHECK: FAILED - the mail server refused the login for", user)
+		log.Println("   reason:", err)
+		log.Println("   FIX: SMTP_USER must be the SAME Gmail account that created the App Password,")
+		log.Println("        and SMTP_PASS must be that 16-letter App Password (not your normal password).")
+		return
+	}
+	c.Quit()
+	log.Println("EMAIL CHECK: OK - login accepted, invitations will be emailed from", user)
 }
 
 // ---------- Sending ----------
