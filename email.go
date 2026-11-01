@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/tls"
+	_ "embed" // lets us bake the banner picture into the program
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"html"
@@ -25,6 +27,15 @@ import (
 //   SMTP_USER  your Gmail address
 //   SMTP_PASS  a Gmail "App Password" (NOT your normal password)
 // Optional: SMTP_HOST (default smtp.gmail.com), SMTP_PORT (default 587), SMTP_FROM
+
+// The animated dark-blue banner shown at the top of invitation emails.
+// It is baked into the program, so it always travels WITH the email
+// (no website needed to show it).
+//
+//go:embed static/email-banner.gif
+var bannerGIF []byte
+
+const bannerCID = "redirect-banner@redirect.local"
 
 var errEmailNotConfigured = errors.New("email is not configured (SMTP_USER / SMTP_PASS missing)")
 
@@ -178,6 +189,7 @@ func buildMessage(from, to, subject, textBody, htmlBody string) ([]byte, error) 
 	header("Message-ID", "<"+hex.EncodeToString(idBytes)+"@redirect.local>")
 	header("MIME-Version", "1.0")
 
+	// Plain text email (no HTML)
 	if htmlBody == "" {
 		header("Content-Type", "text/plain; charset=UTF-8")
 		header("Content-Transfer-Encoding", "quoted-printable")
@@ -186,71 +198,125 @@ func buildMessage(from, to, subject, textBody, htmlBody string) ([]byte, error) 
 		return buf.Bytes(), nil
 	}
 
-	mw := multipart.NewWriter(&buf)
-	header("Content-Type", "multipart/alternative; boundary="+mw.Boundary())
-	buf.WriteString("\r\n")
+	// Does the HTML use the animated banner? Then we attach it ("related").
+	withBanner := strings.Contains(htmlBody, "cid:"+bannerCID)
 
-	for _, part := range []struct{ ctype, body string }{
-		{"text/plain; charset=UTF-8", textBody}, // simple version first
-		{"text/html; charset=UTF-8", htmlBody},  // pretty version last (mail apps prefer it)
-	} {
-		pw, err := mw.CreatePart(textproto.MIMEHeader{
-			"Content-Type":              {part.ctype},
-			"Content-Transfer-Encoding": {"quoted-printable"},
-		})
-		if err != nil {
+	// Writes the "text version + pretty version" pair into w.
+	writeAlternatives := func(w *multipart.Writer) error {
+		for _, part := range []struct{ ctype, body string }{
+			{"text/plain; charset=UTF-8", textBody}, // simple version first
+			{"text/html; charset=UTF-8", htmlBody},  // pretty version last (mail apps prefer it)
+		} {
+			pw, err := w.CreatePart(textproto.MIMEHeader{
+				"Content-Type":              {part.ctype},
+				"Content-Transfer-Encoding": {"quoted-printable"},
+			})
+			if err != nil {
+				return err
+			}
+			writeQP(pw, part.body)
+		}
+		return nil
+	}
+
+	if !withBanner {
+		mw := multipart.NewWriter(&buf)
+		header("Content-Type", "multipart/alternative; boundary="+mw.Boundary())
+		buf.WriteString("\r\n")
+		if err := writeAlternatives(mw); err != nil {
 			return nil, err
 		}
-		writeQP(pw, part.body)
+		return buf.Bytes(), mw.Close()
 	}
-	if err := mw.Close(); err != nil {
+
+	// related( alternative(text, html), image )
+	outer := multipart.NewWriter(&buf)
+	header("Content-Type", "multipart/related; type=\"multipart/alternative\"; boundary="+outer.Boundary())
+	buf.WriteString("\r\n")
+
+	// the text/html pair
+	var altBuf bytes.Buffer
+	inner := multipart.NewWriter(&altBuf)
+	if err := writeAlternatives(inner); err != nil {
 		return nil, err
 	}
-	return buf.Bytes(), nil
+	if err := inner.Close(); err != nil {
+		return nil, err
+	}
+	pw, err := outer.CreatePart(textproto.MIMEHeader{
+		"Content-Type": {"multipart/alternative; boundary=" + inner.Boundary()},
+	})
+	if err != nil {
+		return nil, err
+	}
+	pw.Write(altBuf.Bytes())
+
+	// the animated picture
+	iw, err := outer.CreatePart(textproto.MIMEHeader{
+		"Content-Type":              {"image/gif; name=\"redirect-banner.gif\""},
+		"Content-Transfer-Encoding": {"base64"},
+		"Content-ID":                {"<" + bannerCID + ">"},
+		"Content-Disposition":       {"inline; filename=\"redirect-banner.gif\""},
+	})
+	if err != nil {
+		return nil, err
+	}
+	encoded := base64.StdEncoding.EncodeToString(bannerGIF)
+	for len(encoded) > 0 { // email lines must be short: 76 characters each
+		n := 76
+		if len(encoded) < n {
+			n = len(encoded)
+		}
+		iw.Write([]byte(encoded[:n] + "\r\n"))
+		encoded = encoded[n:]
+	}
+	return buf.Bytes(), outer.Close()
 }
 
 // ---------- The emails themselves ----------
 
-const redirectAbout = "Redirect isn't another course platform trying to teach you everything from scratch. " +
-	"It's a curated launchpad. Pick a programming language you want to learn, and Redirect instantly points you " +
-	"to 10 of the best free resources on the web for it: official docs, interactive tutorials, full courses, " +
-	"and hands-on practice sites. No more spending an hour searching \"best way to learn Python\". " +
-	"Just pick a language, click, and start learning. Your account keeps track of every resource you've " +
-	"visited, so you never lose your place."
+// A short description of the site, used in every invitation.
+const redirectShort = "Redirect is a free launchpad for learning to code. Pick a programming language and we point you " +
+	"straight to 10 of the best free places to learn it: official docs, interactive tutorials, full courses and practice sites."
 
-// inviteEmail builds the invitation email: a short intro, a paragraph about
-// what Redirect is, (optionally) an extra paragraph, and an Accept Invite button.
-func inviteEmail(inviterName, intro, extra, link string) (text, htmlBody string) {
-	var t strings.Builder
-	t.WriteString("Hello,\n\n")
-	t.WriteString(inviterName + " " + intro + "\n\n")
-	t.WriteString("WHAT IS REDIRECT?\n" + redirectAbout + "\n\n")
-	if extra != "" {
-		t.WriteString(extra + "\n\n")
-	}
-	t.WriteString("ACCEPT INVITE:\n" + link + "\n\n")
-	t.WriteString("This invitation works for 7 days. If you weren't expecting it, you can safely ignore this email.\n\n")
-	t.WriteString("The Redirect Team\n")
+// inviteEmail builds the dark-blue invitation email: an animated banner,
+// a heading, ONE short paragraph that ends with the question "would you
+// like to join?", and an Accept Invite button.
+func inviteEmail(heading, message, link string) (text, htmlBody string) {
+	text = heading + "\n\n" +
+		message + "\n\n" +
+		"ACCEPT INVITE:\n" + link + "\n\n" +
+		"This invitation works for 7 days. If you weren't expecting it, you can safely ignore this email.\n\n" +
+		"The Redirect Team\n"
 
 	e := html.EscapeString
 	var h strings.Builder
-	h.WriteString(`<!DOCTYPE html><html><body style="margin:0;padding:0;background:#eef3f9;font-family:'Segoe UI',Arial,sans-serif;">`)
-	h.WriteString(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef3f9;padding:24px 12px;"><tr><td align="center">`)
-	h.WriteString(`<table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:12px;border:1px solid #d6e2f0;">`)
-	h.WriteString(`<tr><td style="padding:32px;">`)
-	h.WriteString(`<h1 style="margin:0;color:#2b7de9;font-size:28px;">Redirect</h1>`)
-	h.WriteString(`<p style="margin:4px 0 24px;color:#5b7a99;">Your gateway to great learning.</p>`)
-	h.WriteString(`<p style="color:#1a2b3c;line-height:1.6;font-size:16px;">Hello,<br><br><strong>` + e(inviterName) + `</strong> ` + e(intro) + `</p>`)
-	h.WriteString(`<h3 style="margin:24px 0 8px;color:#2b7de9;font-size:17px;">What is Redirect?</h3>`)
-	h.WriteString(`<p style="color:#1a2b3c;line-height:1.7;font-size:15px;margin:0;">` + e(redirectAbout) + `</p>`)
-	if extra != "" {
-		h.WriteString(`<p style="color:#1a2b3c;line-height:1.7;font-size:15px;margin:16px 0 0;">` + e(extra) + `</p>`)
-	}
-	h.WriteString(`<p style="text-align:center;margin:32px 0;"><a href="` + e(link) + `" style="display:inline-block;background:#2b7de9;color:#ffffff;text-decoration:none;font-weight:bold;font-size:16px;padding:14px 36px;border-radius:8px;">Accept Invite</a></p>`)
-	h.WriteString(`<p style="color:#7a93ad;font-size:12px;line-height:1.5;margin:0;">If the button doesn't work, copy this link into your browser:<br><a href="` + e(link) + `" style="color:#2b7de9;word-break:break-all;">` + e(link) + `</a></p>`)
-	h.WriteString(`<p style="color:#7a93ad;font-size:12px;margin:16px 0 0;">This invitation works for 7 days. If you weren't expecting it, you can safely ignore this email.</p>`)
-	h.WriteString(`</td></tr></table></td></tr></table></body></html>`)
-	return t.String(), h.String()
+	h.WriteString(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
+		`<meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark"></head>`)
+	h.WriteString(`<body style="margin:0;padding:0;background:#030a18;" bgcolor="#030a18">`)
+	h.WriteString(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#030a18" style="background:#030a18;"><tr><td align="center" style="padding:24px 12px;">`)
+	h.WriteString(`<table role="presentation" width="600" cellpadding="0" cellspacing="0" bgcolor="#0a1a3a" style="max-width:600px;width:100%;background:#0a1a3a;border:1px solid #1e3a5c;border-radius:14px;">`)
+	// animated banner
+	h.WriteString(`<tr><td style="padding:0;line-height:0;font-size:0;border-radius:14px 14px 0 0;">` +
+		`<img src="cid:` + bannerCID + `" width="600" alt="Redirect - Your gateway to great learning" ` +
+		`style="display:block;width:100%;max-width:600px;height:auto;border:0;border-radius:14px 14px 0 0;color:#6cb2ff;font-size:22px;"></td></tr>`)
+	h.WriteString(`<tr><td style="padding:32px 36px 12px;">`)
+	h.WriteString(`<h1 style="margin:0 0 16px;color:#eef6ff;font-family:'Segoe UI',Arial,sans-serif;font-size:26px;line-height:1.3;">` + e(heading) + `</h1>`)
+	h.WriteString(`<p style="margin:0;color:#c5d6ee;font-family:'Segoe UI',Arial,sans-serif;font-size:16px;line-height:1.7;">` + e(message) + `</p>`)
+	h.WriteString(`</td></tr>`)
+	// button
+	h.WriteString(`<tr><td align="center" style="padding:24px 36px 28px;">` +
+		`<table role="presentation" cellpadding="0" cellspacing="0"><tr><td align="center" bgcolor="#2b7de9" style="background:#2b7de9;border-radius:10px;">` +
+		`<a href="` + e(link) + `" style="display:inline-block;padding:15px 44px;color:#ffffff;font-family:'Segoe UI',Arial,sans-serif;font-size:17px;font-weight:bold;text-decoration:none;border-radius:10px;">Accept Invite</a>` +
+		`</td></tr></table></td></tr>`)
+	// small print
+	h.WriteString(`<tr><td style="padding:0 36px 30px;font-family:'Segoe UI',Arial,sans-serif;font-size:12px;line-height:1.6;color:#7f9bc0;">` +
+		`If the button doesn't work, copy this link into your browser:<br>` +
+		`<a href="` + e(link) + `" style="color:#6cb2ff;word-break:break-all;">` + e(link) + `</a><br><br>` +
+		`This invitation works for 7 days. If you weren't expecting it, you can safely ignore this email.` +
+		`</td></tr>`)
+	h.WriteString(`</table></td></tr></table></body></html>`)
+	return text, h.String()
 }
 
 func sendWelcomeEmail(toEmail, fullName string) {

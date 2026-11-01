@@ -184,17 +184,18 @@ func processInvite(w http.ResponseWriter, r *http.Request, u *User, forUser bool
 	}
 	link := baseURL() + path + "?token=" + token
 
-	var subject, intro, extra string
+	var subject, heading, message string
 	if forUser {
 		subject = "You're invited to join Redirect 🎉"
-		intro = "has invited you to join Redirect."
+		heading = "You're invited to join Redirect"
+		message = u.FullName + " thinks you'd love Redirect. " + redirectShort + " Would you like to join us?"
 	} else {
 		subject = "You're invited to be an admin on Redirect"
-		intro = "(Head Admin) has invited you to become an admin on Redirect."
-		extra = "As an admin you will help look after the Redirect community: support learners, keep an eye on how the platform is doing, " +
-			"report problems early, and suggest new languages and learning resources so Redirect can keep growing."
+		heading = "Join the Redirect team as an admin"
+		message = u.FullName + " (Head Admin) would love for you to join the Redirect team as an admin. " + redirectShort +
+			" As an admin, you'd help look after our community of learners and help the site grow. Would you like to join the team?"
 	}
-	text, htmlBody := inviteEmail(u.FullName, intro, extra, link)
+	text, htmlBody := inviteEmail(heading, message, link)
 
 	// Send in the background, but wait up to 15 seconds to tell the admin how it went.
 	done := make(chan error, 1)
